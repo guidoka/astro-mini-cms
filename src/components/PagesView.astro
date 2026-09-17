@@ -1,0 +1,43 @@
+---
+// Seitenbaum als Liste, eingerückt nach Tiefe.
+//
+//   const p = await pagesIndex(Astro);
+//   <Admin title="Seiten" ok={p.ok} error={p.error}><PagesView rows={p.rows} kinds={p.kinds} /></Admin>
+import type { PageTreeRow } from '../pages';
+
+interface Props {
+  rows: PageTreeRow[];
+  kinds: Record<string, string>;
+  basePath?: string;
+}
+const { rows, kinds, basePath = '/admin/seiten' } = Astro.props;
+---
+<div class="cms-row cms-mb">
+  <span class="cms-grow"></span>
+  <a href={`${basePath}/neu`} class="btn">+ Neue Seite</a>
+</div>
+
+{rows.length === 0 ? (
+  <div class="card">
+    <p style="margin:0 0 .5rem">Es gibt noch keine Seite. Die erste Seite wird die Startseite.</p>
+    <a href={`${basePath}/neu`} class="btn">Startseite anlegen</a>
+  </div>
+) : (
+  <table class="list">
+    <thead><tr><th>Seite</th><th>Adresse</th><th>Art</th><th>Status</th><th></th></tr></thead>
+    <tbody>{rows.map((r) => (
+      <tr>
+        <td style={`padding-left:${0.6 + Math.max(0, r.depth) * 1.25}rem`}>
+          <a href={`${basePath}/${r.id}`}>{r.name}</a>
+        </td>
+        <td class="cms-small cms-muted">{r.path}</td>
+        <td class="cms-small">{kinds[r.kind] ?? r.kind}</td>
+        <td>
+          <span class={`pill ${r.published ? 'on' : 'off'}`}>{r.published ? 'veröffentlicht' : 'verborgen'}</span>
+          {r.nav_hide && <span class="pill"> nicht im Menü</span>}
+        </td>
+        <td>{r.published && <a href={r.path} target="_blank" class="cms-small">ansehen ↗</a>}</td>
+      </tr>
+    ))}</tbody>
+  </table>
+)}

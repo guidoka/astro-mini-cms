@@ -1,0 +1,32 @@
+---
+// Raster-Editor: Zeilen mit festen Spaltenmustern, darin Blöcke, alles mit
+// Ziehen verschiebbar. Der Zustand steht als JSON im versteckten Feld
+// „layout“, die Logik im Editor-Skript (Scripts.astro). Zeilenmuster und
+// ihre Namen kommen aus der Konfiguration (defineLayout).
+import { cms } from '../config';
+
+interface Props {
+  layout: unknown;
+  id?: string;
+  label?: string;
+  hint?: string;
+}
+const { layout, id = 'layout-editor', label = 'Inhalt', hint } = Astro.props;
+const { ROW_LAYOUTS, rowNames } = cms().layout;
+const config = JSON.stringify({ layouts: ROW_LAYOUTS, names: rowNames });
+const text =
+  hint ??
+  'Der Inhalt besteht aus Zeilen. Jede Zeile hat ein Spaltenmuster, jede Spalte beliebig viele Blöcke. Mit dem Griff ⣿ lassen sich Zeilen und Blöcke verschieben, Blöcke auch in eine andere Spalte. Gespeichert wird alles zusammen mit „Speichern“.';
+---
+<div class="field" data-layout-editor id={id} data-config={config}>
+  <label>{label}</label>
+  <p class="hint" style="margin-top:0">{text}</p>
+  <input type="hidden" name="layout" value={JSON.stringify(layout)} />
+  <div data-rows></div>
+  <div class="cms-row" style="margin-top:.5rem">
+    <select data-new-layout style="width:auto">
+      {Object.keys(ROW_LAYOUTS).map((k) => <option value={k}>{rowNames[k] ?? k}</option>)}
+    </select>
+    <button type="button" class="btn secondary" data-add-row>+ Zeile</button>
+  </div>
+</div>

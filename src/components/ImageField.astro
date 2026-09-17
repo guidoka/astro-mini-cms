@@ -1,0 +1,27 @@
+---
+// Bildfeld: verstecktes id-Feld, Vorschau, Auswahl aus den Dateien oder Upload.
+// Braucht das Editor-Skript (Scripts.astro) auf der Seite.
+interface Props {
+  name: string;
+  label: string;
+  fileId: string | null;
+  src: string | null;
+  hint?: string;
+}
+const { name, label, fileId, src, hint } = Astro.props;
+---
+<div class="field" data-image-field>
+  <label>{label}</label>
+  <div class="cms-row">
+    <input type="hidden" name={name} value={fileId ?? ''} />
+    <img
+      src={src ?? ''}
+      style={`height:72px;max-width:140px;object-fit:contain;border:1px solid #e7e5e4;background:#fff;${src ? '' : 'display:none'}`}
+      alt=""
+    />
+    <span data-filename class="cms-muted cms-small">{src ? src.split('/').pop() : 'kein Bild'}</span>
+    <button type="button" class="btn secondary" data-pick-image>Bild wählen</button>
+    <button type="button" class="btn secondary" data-clear-image>Entfernen</button>
+  </div>
+  {hint && <p class="hint">{hint}</p>}
+</div>
