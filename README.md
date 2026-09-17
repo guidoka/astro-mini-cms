@@ -28,7 +28,7 @@ kopiert nicht mehr.
 
 ```json
 // package.json
-"dependencies": { "astro-mini-cms": "github:guidoka/astro-mini-cms#v0.1.0" },
+"dependencies": { "astro-mini-cms": "git+https://github.com/guidoka/astro-mini-cms.git#v0.1.0" },
 "scripts": { "postinstall": "astro-mini-cms-tinymce" }
 ```
 
