@@ -1,0 +1,192 @@
+---
+// Rahmen der Pflegeoberfläche: Navigation links, Inhalt rechts, Meldungen
+// oben, Bestätigungsdialog. Das Projekt legt darüber sein eigenes
+// layouts/Admin.astro, das Navigation und Marke setzt.
+//
+// Die Klassen (.btn, .card, .field, .hint, .pill, table.list, .cms-*) sind
+// hier global definiert und brauchen kein Tailwind. Wer im Projekt Tailwind
+// fürs Admin lädt, kann beides mischen.
+import { cms } from '../config';
+
+interface Props {
+  title: string;
+  ok?: string | undefined;
+  error?: string | undefined;
+  /** Menüeinträge: [Pfad, Beschriftung]. */
+  nav: [string, string][];
+  /** Name im Kopf der Seitenleiste; Vorgabe aus der Konfiguration. */
+  brand?: string;
+  subtitle?: string;
+  /** Akzentfarbe (Knöpfe, Links, aktiver Menüpunkt). */
+  accent?: string;
+  /** POST-Ziel zum Abmelden. */
+  logoutAction?: string;
+  /** Link „Seite ansehen“. */
+  siteHref?: string;
+  adminPrefix?: string;
+}
+const {
+  title, ok, error, nav,
+  brand = cms().brand,
+  subtitle = 'Pflegeoberfläche',
+  accent = '#b91c1c',
+  logoutAction = '/abmelden',
+  siteHref = '/',
+  adminPrefix = '/admin',
+} = Astro.props;
+const user = (Astro.locals as { user?: { name?: string | null; email?: string } | null }).user;
+const here = Astro.url.pathname;
+const active = (p: string) =>
+  p === adminPrefix ? here === adminPrefix || here === adminPrefix + '/' : here.startsWith(p);
+---
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>{title} · {brand} Admin</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style is:global define:vars={{ accent }}>
+    :root { color-scheme: light; --cms-accent: var(--accent); }
+    body { margin: 0; font-family: system-ui, "Segoe UI", sans-serif; font-size: 15px; color: #1f2937; background: #f5f5f4; }
+    a { color: var(--cms-accent); }
+    input[type=text], input[type=email], input[type=number], input[type=url], input[type=date], select, textarea { width: 100%; padding: .45rem .6rem; border: 1px solid #d6d3d1; border-radius: 4px; background: #fff; font: inherit; box-sizing: border-box; }
+    textarea { min-height: 6rem; }
+    label { display: block; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: #57534e; margin-bottom: .25rem; }
+    .field { margin-bottom: 1rem; }
+    .btn { display: inline-block; padding: .5rem .9rem; border-radius: 4px; border: 1px solid var(--cms-accent); background: var(--cms-accent); color: #fff; font: inherit; cursor: pointer; text-decoration: none; }
+    .btn.secondary { background: #fff; color: #1f2937; border-color: #d6d3d1; }
+    .btn.danger { background: #fff; color: var(--cms-accent); border-color: var(--cms-accent); }
+    .btn.block { display: block; width: 100%; text-align: center; }
+    table.list { width: 100%; border-collapse: collapse; background: #fff; }
+    table.list th, table.list td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid #e7e5e4; vertical-align: top; }
+    table.list th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: #57534e; }
+    .card { background: #fff; border: 1px solid #e7e5e4; border-radius: 6px; padding: 1rem 1.25rem; }
+    .flash-ok { background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: .6rem .9rem; border-radius: 4px; margin-bottom: 1rem; }
+    .flash-error { background: #fef2f2; border: 1px solid #ef4444; color: #991b1b; padding: .6rem .9rem; border-radius: 4px; margin-bottom: 1rem; }
+    .pill { display: inline-block; font-size: .72rem; padding: .1rem .45rem; border-radius: 999px; background: #e7e5e4; color: #44403c; }
+    .pill.on { background: #dcfce7; color: #166534; }
+    .pill.off { background: #fee2e2; color: #991b1b; }
+    /* Hinweistexte stehen unter ihrem Feld. Etwas Luft nach oben, damit sie
+       nicht am Eingabefeld kleben; der Abstand nach unten kommt von .field. */
+    .hint { font-size: .8rem; color: #57534e; margin: .4rem 0 0; line-height: 1.45; }
+    /* Kleine Layout-Helfer, damit die mitgelieferten Seiten ohne Tailwind auskommen. */
+    .cms-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .cms-row.end { align-items: flex-end; }
+    .cms-grow { flex: 1; }
+    .cms-muted { color: #57534e; }
+    .cms-small { font-size: .85rem; }
+    .cms-xs { font-size: .75rem; color: #78716c; }
+    .cms-mb { margin-bottom: 1rem; }
+    .cms-mt { margin-top: 1rem; }
+    .cms-nowrap { white-space: nowrap; }
+    .cms-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 1rem; }
+    .cms-tile { display: block; text-decoration: none; color: inherit; }
+    .cms-tile .n { font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .cms-app { display: flex; min-height: 100vh; }
+    .cms-side { width: 14rem; flex-shrink: 0; background: #292524; color: #f5f5f4; display: flex; flex-direction: column; }
+    .cms-side-head { padding: 1rem; border-bottom: 1px solid #44403c; }
+    .cms-side-head .b { font-weight: 600; }
+    .cms-side-head .s { font-size: .75rem; color: #a8a29e; }
+    .cms-nav { flex: 1; padding: .5rem 0; }
+    .cms-nav a { display: block; padding: .5rem 1rem; font-size: .9rem; color: #d6d3d1; text-decoration: none; }
+    .cms-nav a:hover { background: #44403c; color: #fff; }
+    .cms-nav a.active { background: #44403c; color: #fff; }
+    .cms-side-foot { padding: .75rem 1rem; border-top: 1px solid #44403c; font-size: .75rem; color: #a8a29e; }
+    .cms-side-foot .u { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cms-side-foot button { text-decoration: underline; color: #d6d3d1; background: transparent; border: 0; padding: 0; cursor: pointer; font: inherit; }
+    .cms-side-foot a { display: block; margin-top: .5rem; color: #a8a29e; }
+    .cms-main { flex: 1; min-width: 0; padding: 1.5rem 2rem; }
+    .cms-main > h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 1rem; }
+    dialog.cms-dialog { border: 0; border-radius: 8px; padding: 0; width: min(28rem, 92vw); box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+    dialog.cms-dialog::backdrop { background: rgba(28,25,23,.45); }
+    dialog.cms-dialog .body { padding: 1.25rem 1.5rem 1rem; line-height: 1.5; white-space: pre-line; }
+    dialog.cms-dialog .actions { display: flex; justify-content: flex-end; gap: .5rem; padding: 0 1.5rem 1.25rem; }
+    /* Ziel beim Ziehen im Raster-Editor */
+    .drop-over { outline: 2px dashed var(--cms-accent); outline-offset: 2px; }
+  </style>
+  <slot name="head" />
+</head>
+<body>
+  <div class="cms-app">
+    <aside class="cms-side">
+      <div class="cms-side-head">
+        <div class="b">{brand}</div>
+        <div class="s">{subtitle}</div>
+      </div>
+      <nav class="cms-nav">
+        {nav.map(([p, label]) => (
+          <a href={p} class={active(p) ? 'active' : ''}>{label}</a>
+        ))}
+      </nav>
+      <div class="cms-side-foot">
+        <div class="u">{user?.name || user?.email}</div>
+        <form method="post" action={logoutAction} style="margin-top:.25rem">
+          <button>Abmelden</button>
+        </form>
+        <a href={siteHref} target="_blank">Seite ansehen ↗</a>
+      </div>
+    </aside>
+    <main class="cms-main">
+      <h1>{title}</h1>
+      {ok && <div class="flash-ok">{ok}</div>}
+      {error && <div class="flash-error">{error}</div>}
+      <slot />
+    </main>
+  </div>
+
+  <dialog class="cms-dialog" id="cms-dialog">
+    <form method="dialog">
+      <div class="body" data-text></div>
+      <div class="actions">
+        <button type="submit" value="cancel" class="btn secondary" data-cancel>Abbrechen</button>
+        <button type="submit" value="ok" class="btn danger" data-ok autofocus>Ja, löschen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script is:inline>
+    // cmsConfirm(text, opts) und cmsAlert(text) geben ein Promise zurück.
+    // Eigener Dialog statt confirm(), weil der je nach Browser anders aussieht
+    // und sich nicht gestalten lässt. Buttons mit data-confirm werden
+    // automatisch abgefangen und erst nach Bestätigung abgeschickt.
+    (function () {
+      var dlg = document.getElementById('cms-dialog');
+      if (!dlg) return;
+      var text = dlg.querySelector('[data-text]');
+      var okBtn = dlg.querySelector('[data-ok]');
+      var cancelBtn = dlg.querySelector('[data-cancel]');
+
+      function open(msg, opts) {
+        opts = opts || {};
+        text.textContent = msg;
+        okBtn.textContent = opts.ok || 'OK';
+        okBtn.className = 'btn' + (opts.danger ? ' danger' : '');
+        cancelBtn.hidden = !!opts.alert;
+        return new Promise(function (resolve) {
+          dlg.onclose = function () { resolve(dlg.returnValue === 'ok'); dlg.returnValue = ''; };
+          dlg.showModal();
+          okBtn.focus();
+        });
+      }
+      window.cmsConfirm = function (msg, opts) {
+        return open(msg, Object.assign({ ok: 'Ja, löschen', danger: true }, opts));
+      };
+      window.cmsAlert = function (msg) { return open(msg, { alert: true }); };
+
+      document.addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-confirm]');
+        if (!b || b.dataset.confirmed) return;
+        e.preventDefault();
+        window.cmsConfirm(b.dataset.confirm, { ok: b.dataset.confirmOk }).then(function (yes) {
+          if (!yes) return;
+          b.dataset.confirmed = '1';
+          // requestSubmit mit dem Button, damit name und value mitgehen.
+          if (b.form) b.form.requestSubmit(b); else b.click();
+          delete b.dataset.confirmed;
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

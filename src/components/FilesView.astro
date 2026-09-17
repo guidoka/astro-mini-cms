@@ -1,0 +1,95 @@
+---
+// Dateiverwaltung: Hochladen, Suchen, Ordnerfilter, Verwendung, Löschen.
+// Daten und POST-Verarbeitung kommen aus pages.ts (filesPage); die Seite
+// des Projekts legt die View in ihren Admin-Rahmen:
+//
+//   const p = await filesPage(Astro);
+//   if (p.redirect) return Astro.redirect(p.redirect, 302);
+//   <Admin title="Dateien" ok={p.ok} error={p.error}><FilesView {...p} /></Admin>
+import type { FilesPageData } from '../pages';
+import { UPLOAD_ACCEPT } from '../files';
+import { cms } from '../config';
+
+interface Props extends Omit<FilesPageData, 'redirect' | 'ok' | 'error'> {
+  /** Satz unter dem Upload-Formular. */
+  hint?: string;
+}
+const { basePath, q, folder, page, pages, total, files, folders, usageId, usage, hint } = Astro.props;
+const mb = Math.round(cms().maxUploadBytes / 1024 / 1024);
+const link = (p: Record<string, string | number>) => {
+  const u = new URLSearchParams({ q, ordner: folder, seite: String(page), ...Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)])) });
+  for (const [k, v] of [...u]) if (!v || (k === 'seite' && v === '1')) u.delete(k);
+  return `${basePath}${u.size ? `?${u}` : ''}`;
+};
+---
+<div class="card cms-mb">
+  <form method="post" enctype="multipart/form-data" class="cms-row end">
+    <div class="field" style="margin:0">
+      <label for="file">Neue Datei</label>
+      <input id="file" name="file" type="file" accept={UPLOAD_ACCEPT} required />
+    </div>
+    <div class="field" style="margin:0;min-width:16rem">
+      <label for="title">Bezeichnung</label>
+      <input id="title" name="title" type="text" placeholder="optional" />
+    </div>
+    <button class="btn">Hochladen</button>
+  </form>
+  <p class="hint" style="margin:.75rem 0 0">{hint ?? `Bilder und PDFs bis ${mb} MB.`}</p>
+</div>
+
+<form method="get" class="cms-row" style="max-width:40rem;margin-bottom:.5rem">
+  <input type="text" name="q" value={q} placeholder="Suchen" style="flex:1;min-width:12rem" />
+  <select name="ordner" style="width:auto">
+    <option value="" selected={folder === ''}>alle Ordner</option>
+    {folders.filter((o) => o.folder).map((o) => (
+      <option value={o.folder} selected={folder === o.folder}>{o.folder} ({o.n})</option>
+    ))}
+  </select>
+  <button class="btn secondary">Anzeigen</button>
+</form>
+<p class="cms-small cms-muted" style="margin:0 0 .75rem">{total} Dateien, Seite {page} von {pages}</p>
+
+{usageId && (
+  <div class="card cms-mb">
+    <strong>Verwendung</strong>
+    {usage.length === 0
+      ? <p class="cms-small cms-muted" style="margin:.5rem 0">Diese Datei wird nirgends verwendet und kann gelöscht werden.</p>
+      : <ul class="cms-small">{usage.map((u) => <li><a href={u.href}>{u.kind}: {u.name}</a></li>)}</ul>}
+    <a href={basePath} class="cms-small">schliessen</a>
+  </div>
+)}
+
+<table class="list">
+  <thead><tr><th style="width:6rem"></th><th>Datei</th><th>Ordner</th><th>Typ</th><th></th></tr></thead>
+  <tbody>{files.map((file) => (
+    <tr>
+      <td>
+        {file.mime?.startsWith('image/')
+          ? <img src={file.blob_key} alt="" style="max-height:3rem;max-width:5rem" />
+          : <span class="pill">PDF</span>}
+      </td>
+      <td>
+        <div>{file.title || file.filename}</div>
+        <div class="cms-xs">{file.blob_key}</div>
+      </td>
+      <td class="cms-small cms-muted">{file.folder ?? '—'}{file.width ? <span class="cms-xs" style="display:block">{file.width} × {file.height}</span> : null}</td>
+      <td class="cms-small cms-muted">{file.mime}</td>
+      <td class="cms-small cms-nowrap">
+        <a href={link({ verwendung: file.id })}>Verwendung</a>
+        <form method="post" style="display:inline">
+          <input type="hidden" name="_action" value="delete" />
+          <input type="hidden" name="id" value={file.id} />
+          <button class="btn danger" style="margin-left:.5rem">Löschen</button>
+        </form>
+      </td>
+    </tr>
+  ))}</tbody>
+</table>
+{files.length === 0 && <p class="cms-small cms-muted">Keine Dateien.</p>}
+{pages > 1 && (
+  <div class="cms-row cms-mt">
+    {page > 1 && <a href={link({ seite: page - 1 })} class="btn secondary">← zurück</a>}
+    <span class="cms-small cms-muted">Seite {page} von {pages}</span>
+    {page < pages && <a href={link({ seite: page + 1 })} class="btn secondary">weiter →</a>}
+  </div>
+)}

@@ -1,0 +1,19 @@
+---
+// Editor-Skripte für Masken mit Rich-Text, Bildauswahl oder Raster; in den
+// <head> der Seite (slot="head" der AdminShell). TinyMCE kommt vom eigenen
+// Server (astro-mini-cms-tinymce als postinstall), der Editor selbst wird
+// inline eingebettet und braucht keine Datei unter public/.
+// Eigene Blocktypen des Projekts als Kind einfügen; sie laufen nach dem
+// Editor-Kern und vor dem Aufbau der Felder:
+//   <Scripts><script is:inline src="/admin/blocks.js"></script></Scripts>
+import adminJs from '../editor/admin.js?raw';
+
+interface Props {
+  /** Pfad zu tinymce.min.js, falls nicht unter /vendor/tinymce. */
+  tinymceSrc?: string;
+}
+const { tinymceSrc = '/vendor/tinymce/tinymce.min.js' } = Astro.props;
+---
+<script is:inline src={tinymceSrc} defer></script>
+<script is:inline set:html={adminJs}></script>
+<slot />

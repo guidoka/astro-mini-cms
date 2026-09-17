@@ -1,0 +1,93 @@
+---
+// Sechs einzelne Ziffernfelder statt eines Textfeldes. Zusammengesetzt wird
+// serverseitig aus den sechs Werten, das funktioniert auch ohne Javascript.
+// Das Skript macht es nur bequem: weiterspringen beim Tippen, zurück bei der
+// Rücktaste, und ein eingefügter Code verteilt sich auf alle Felder.
+interface Props { id?: string; accent?: string }
+const { id = 'code-felder', accent = 'var(--cms-accent, #b91c1c)' } = Astro.props;
+---
+<div class="code-felder" id={id} style={`--cms-code-accent:${accent}`}>
+  {[0, 1, 2, 3, 4, 5].map((i) => (
+    <input
+      type="text"
+      name="ziffer"
+      inputmode="numeric"
+      pattern="[0-9]*"
+      maxlength="1"
+      autocomplete={i === 0 ? 'one-time-code' : 'off'}
+      aria-label={`Ziffer ${i + 1} von 6`}
+      required
+    />
+  ))}
+</div>
+
+<style is:global>
+  .code-felder { display: flex; gap: .5rem; justify-content: space-between; }
+  .code-felder input {
+    width: 100%;
+    max-width: 3rem;
+    aspect-ratio: 3 / 4;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    padding: 0;
+    border: 1px solid #d6d3d1;
+    border-radius: 6px;
+    background: #fff;
+    box-sizing: border-box;
+  }
+  .code-felder input:focus {
+    outline: none;
+    border-color: var(--cms-code-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--cms-code-accent) 20%, transparent);
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    document.querySelectorAll('.code-felder').forEach(function (box) {
+      if (box.dataset.ready) return;
+      box.dataset.ready = '1';
+      var felder = Array.prototype.slice.call(box.querySelectorAll('input'));
+
+      function setze(werte, ab) {
+        for (var i = 0; i < werte.length && ab + i < felder.length; i++) {
+          felder[ab + i].value = werte[i];
+        }
+        var naechstesLeer = felder.find(function (f) { return !f.value; });
+        (naechstesLeer || felder[felder.length - 1]).focus();
+        // Vollständig? Dann gleich abschicken, das spart einen Klick.
+        if (felder.every(function (f) { return f.value; })) {
+          var form = box.closest('form');
+          if (form) form.requestSubmit();
+        }
+      }
+
+      felder.forEach(function (feld, i) {
+        feld.addEventListener('input', function () {
+          var ziffern = feld.value.replace(/\D/g, '');
+          if (!ziffern) { feld.value = ''; return; }
+          feld.value = '';
+          setze(ziffern, i);
+        });
+        feld.addEventListener('keydown', function (e) {
+          if (e.key === 'Backspace' && !feld.value && i > 0) {
+            e.preventDefault();
+            felder[i - 1].value = '';
+            felder[i - 1].focus();
+          }
+          if (e.key === 'ArrowLeft' && i > 0) felder[i - 1].focus();
+          if (e.key === 'ArrowRight' && i < felder.length - 1) felder[i + 1].focus();
+        });
+        feld.addEventListener('paste', function (e) {
+          e.preventDefault();
+          var text = (e.clipboardData || window.clipboardData).getData('text') || '';
+          setze(text.replace(/\D/g, '').slice(0, 6), 0);
+        });
+        feld.addEventListener('focus', function () { feld.select(); });
+      });
+
+      if (felder.length) felder[0].focus();
+    });
+  })();
+</script>
