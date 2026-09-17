@@ -24,6 +24,8 @@ interface Props {
   /** Link „Seite ansehen“. */
   siteHref?: string;
   adminPrefix?: string;
+  /** Sprache des Dokuments, etwa de-CH. */
+  lang?: string;
 }
 const {
   title, ok, error, nav,
@@ -33,13 +35,14 @@ const {
   logoutAction = '/abmelden',
   siteHref = '/',
   adminPrefix = '/admin',
+  lang = 'de',
 } = Astro.props;
 const user = (Astro.locals as { user?: { name?: string | null; email?: string } | null }).user;
 const here = Astro.url.pathname;
 const active = (p: string) =>
   p === adminPrefix ? here === adminPrefix || here === adminPrefix + '/' : here.startsWith(p);
 ---
-<html lang="de">
+<html lang={lang}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

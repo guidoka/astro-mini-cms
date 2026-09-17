@@ -14,15 +14,17 @@ interface Props extends Omit<LoginPageData, 'redirect'> {
   accent?: string;
   /** Adresse dieser Seite, für „Andere Adresse“. */
   self?: string;
+  lang?: string;
 }
 const {
   step, email, remember, error, days, showRemember,
   brand = cms().brand,
   accent = '#b91c1c',
   self = '/admin/login',
+  lang = 'de',
 } = Astro.props;
 ---
-<html lang="de">
+<html lang={lang}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

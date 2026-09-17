@@ -55,9 +55,20 @@ export interface LayoutOptions<B extends readonly AnyBlockSchema[]> {
   rowLayouts?: Record<string, readonly number[]>;
   /** Bezeichnungen der Zeilenmuster in der Oberflaeche. */
   rowNames?: Record<string, string>;
-  /** Weitere Blocktypen, je ein z.object mit type: z.literal('…'). */
+  /**
+   * Weitere Blocktypen, je ein z.object mit type: z.literal('…'). Ein Block
+   * mit dem Typ eines Kernblocks (rte, image, slider) ersetzt diesen, etwa
+   * ein Bildblock mit zusaetzlichen Feldern.
+   */
   blocks?: B;
 }
+
+const blockType = (s: AnyBlockSchema): string => String((s.shape.type as z.ZodLiteral<string>).value);
+
+type CoreBlock = z.infer<typeof RteBlock> | z.infer<typeof ImageBlock> | z.infer<typeof SliderBlock>;
+type ExtraBlock<B extends readonly AnyBlockSchema[]> = z.infer<B[number]>;
+/** Kernbloecke ohne die, die das Projekt mit demselben Typ ersetzt, plus die des Projekts. */
+type BlockOf<B extends readonly AnyBlockSchema[]> = Exclude<CoreBlock, { type: ExtraBlock<B>['type'] }> | ExtraBlock<B>;
 
 /**
  * Raster-Schema fuer ein Projekt bauen. Gibt Schemas, Typen-Helfer und die
@@ -72,15 +83,12 @@ export function defineLayout<const B extends readonly AnyBlockSchema[] = readonl
   if (!keys.length) throw new Error('Mindestens ein Zeilenmuster ist noetig.');
 
   const extra = (opts.blocks ?? []) as unknown as B;
+  const overridden = new Set(extra.map(blockType));
+  const core = [RteBlock, ImageBlock, SliderBlock].filter((b) => !overridden.has(blockType(b)));
   const Block = z.discriminatedUnion(
     'type',
-    [RteBlock, ImageBlock, SliderBlock, ...extra] as unknown as readonly [
-      typeof RteBlock,
-      typeof ImageBlock,
-      typeof SliderBlock,
-      ...B,
-    ],
-  );
+    [...core, ...extra] as unknown as readonly [AnyBlockSchema, ...AnyBlockSchema[]],
+  ) as unknown as z.ZodType<BlockOf<B>>;
   const Column = z.object({
     span: z.number().int().min(1).max(12),
     blocks: z.array(Block),
