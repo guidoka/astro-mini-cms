@@ -16,6 +16,11 @@
 // ctx: render (Editor neu zeichnen), bindTiny(textarea, obj, key, height),
 //      pickImage(cb), esc(text), handle(payload, title), dropZone(el, kind, cb),
 //      moveTo(list, from, to), confirm(text, opts), alert(text).
+//
+// TinyMCE-Einstellungen des Projekts (etwa content_css mit dem Theme der
+// Seite) ueber window.miniCms.tinyOptions = { … }; sie werden beim Start
+// jedes Editors ueber die Vorgaben gelegt. Fuer eigene Listen mit Ziehen
+// stehen handle, dropZone und moveTo auch in window.miniCms.
 (function () {
   'use strict';
 
@@ -46,7 +51,8 @@
   function initTiny(el) {
     if (!window.tinymce || !el || el.dataset.tinyReady) return;
     el.dataset.tinyReady = '1';
-    window.tinymce.init(Object.assign({ target: el }, TINY, el.dataset.tinyHeight ? { height: +el.dataset.tinyHeight } : {}));
+    var extra = (window.miniCms && window.miniCms.tinyOptions) || {};
+    window.tinymce.init(Object.assign({ target: el }, TINY, extra, el.dataset.tinyHeight ? { height: +el.dataset.tinyHeight } : {}));
   }
   function initAllTiny() { document.querySelectorAll('textarea.tinymce').forEach(initTiny); }
 
@@ -397,6 +403,9 @@
     if (window.tinymce) initAllTiny(); else window.addEventListener('load', initAllTiny);
   }
 
-  window.miniCms = { registerBlock: registerBlock, pickImage: pickImage, esc: esc, confirm: confirmFn, alert: alertFn };
+  window.miniCms = {
+    registerBlock: registerBlock, pickImage: pickImage, esc: esc, confirm: confirmFn, alert: alertFn,
+    handle: handle, dropZone: dropZone, moveTo: moveTo, tinyOptions: {}
+  };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

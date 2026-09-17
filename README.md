@@ -187,9 +187,21 @@ rootHere })`; das Projekt hängt seine Spalten an und ruft `saveRow('pages',
 | `astro-mini-cms/storage/s3` | `s3Storage` (R2, S3, kompatible) |
 | `astro-mini-cms/components/*` | `AdminShell`, `LoginView`, `FilesView`, `PagesView`, `LayoutEditor`, `ImageField`, `Scripts`, `CodeFelder` |
 
+## Was die Nutzertabelle braucht
+
+`id`, `email`, `name`, `active`, `last_sign_in_at`. Ein bestehendes Projekt
+mit anderem Namen (`admin_users`) trägt den Namen in `tables` ein und
+ergänzt fehlende Spalten per Migration. `updated_at` pflegt das Paket nicht
+selbst; wer die Spalte hat, setzt den Trigger aus `sql/001_cms.sql`.
+
 ## Änderungen
 
+- **0.1.1** — Für nutri-form: eigene Blöcke mit dem Typ eines Kernblocks
+  ersetzen diesen (`defineLayout({ blocks })`), TinyMCE-Einstellungen des
+  Projekts über `window.miniCms.tinyOptions`, `handle`/`dropZone`/`moveTo`
+  in `window.miniCms` für eigene Listen mit Ziehen, `lang` an AdminShell und
+  LoginView. Die Verwendungsprüfung schaut nur noch auf `pages.layout` und
+  `site_settings.logo_id`; Fusszeilen-Text und weitere Spalten prüft das
+  Projekt in `fileUsage`.
 - **0.1.0** — Extrahiert aus Zeichenschritte (Stand 17.09.2026), dort im
-  Einsatz. Nächster Schritt: nutri-form umstellen (Azure-Blob-Ablage,
-  Tabellen `admin_users`/`admin_sessions`, Blocktyp `sibling_links`, acht
-  Zeilenmuster).
+  Einsatz.

@@ -1,6 +1,6 @@
 {
   "name": "astro-mini-cms",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Kleines CMS für Astro-SSR-Projekte mit Postgres: Seitenbaum, Raster-Editor, Dateien, Anmeldung per E-Mail-Code. Bausteine zum Importieren, kein Framework.",
   "type": "module",
   "private": true,

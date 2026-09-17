@@ -79,7 +79,11 @@ export async function storeUpload(file: File, title?: string, folder = 'Upload')
   return r[0]!;
 }
 
-/** Wo eine Datei verwendet wird: Raster-Inhalte, Einstellungen, plus die Stellen des Projekts. */
+/**
+ * Wo eine Datei verwendet wird: das Raster der Seiten und das Logo, dazu die
+ * Stellen des Projekts (configureCms fileUsage): eigene Tabellen, feste
+ * Bildfelder, Rich-Text-Spalten. byPath und byId sind LIKE-Muster.
+ */
 export async function fileUsage(id: string): Promise<FileUse[]> {
   const f = await one<{ blob_key: string }>(`SELECT blob_key FROM files WHERE id = $1`, [id]);
   if (!f) return [];
@@ -88,8 +92,8 @@ export async function fileUsage(id: string): Promise<FileUse[]> {
   const base = await query<FileUse>(
     `SELECT 'Seite' AS kind, name, '/admin/seiten/' || id AS href FROM pages
        WHERE layout::text LIKE $1 OR layout::text LIKE $2
-     UNION ALL SELECT 'Einstellungen', 'Logo oder Fusszeile', '/admin/einstellungen'
-       FROM site_settings WHERE logo_id = $3 OR footer_text LIKE $1`,
+     UNION ALL SELECT 'Einstellungen', 'Logo', '/admin/einstellungen'
+       FROM site_settings WHERE logo_id = $3`,
     [byPath, byId, id],
   );
   const extra = cms().fileUsage ? await cms().fileUsage!({ id, byPath, byId }) : [];
