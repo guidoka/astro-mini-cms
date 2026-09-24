@@ -86,10 +86,19 @@ export interface PageTreeRow {
 }
 
 export async function pagesIndex(Astro: Pick<Ctx, 'url'>): Promise<{ ok?: string; error?: string; rows: PageTreeRow[]; kinds: Record<string, string> }> {
+  // Reihenfolge wie im Menue: Baum, darin nach sort. Vorher nach path, das sah
+  // nur richtig aus, solange die Adressen nummeriert waren (24.09.2026).
   const rows = await query<PageTreeRow>(
-    `SELECT id, name, path, kind, published, nav_hide,
-            length(path) - length(replace(path, '/', '')) - 1 AS depth
-     FROM pages ORDER BY path`,
+    `WITH RECURSIVE tree AS (
+       SELECT id, name, path, kind, published, nav_hide, 0 AS depth,
+              ARRAY[sort]::int[] AS ord, ARRAY[name]::text[] AS ordname
+       FROM pages WHERE parent_id IS NULL
+       UNION ALL
+       SELECT p.id, p.name, p.path, p.kind, p.published, p.nav_hide, t.depth + 1,
+              t.ord || p.sort, t.ordname || p.name
+       FROM pages p JOIN tree t ON p.parent_id = t.id
+     )
+     SELECT id, name, path, kind, published, nav_hide, depth FROM tree ORDER BY ord, ordname`,
   );
   return { ...flash(Astro.url), rows, kinds: cms().pageKinds };
 }
