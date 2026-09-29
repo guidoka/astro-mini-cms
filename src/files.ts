@@ -40,11 +40,64 @@ export const countFiles = async (q = '', folder = ''): Promise<number> => {
   return r?.n ?? 0;
 };
 
-/** Ordner mit Anzahl, fuer den Filter. „Upload“ sind die Uploads aus dem Admin. */
+export interface FolderRow {
+  id: string;
+  name: string;
+  n: number;
+}
+
+/** Ordner mit Dateianzahl, inklusive leerer Ordner aus file_folders. */
 export const fileFolders = () =>
-  query<{ folder: string; n: number }>(
-    `SELECT COALESCE(folder, '') AS folder, count(*)::int AS n FROM files GROUP BY 1 ORDER BY 1`,
+  query<FolderRow>(
+    `SELECT ff.id, ff.name, count(f.id)::int AS n
+     FROM file_folders ff LEFT JOIN files f ON f.folder = ff.name
+     GROUP BY ff.id, ff.name ORDER BY ff.name`,
   );
+
+/** Ordner anlegen. Gibt die neue Zeile zurueck. */
+export async function createFolder(name: string): Promise<FolderRow> {
+  name = name.trim();
+  if (!name) throw new CmsError('Ordnername darf nicht leer sein.');
+  const r = await query<FolderRow>(
+    `INSERT INTO file_folders (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1
+     RETURNING id, name, 0 AS n`,
+    [name],
+  );
+  return r[0]!;
+}
+
+/** Ordner umbenennen und alle Dateien darin nachziehen. */
+export async function renameFolder(id: string, newName: string): Promise<void> {
+  newName = newName.trim();
+  if (!newName) throw new CmsError('Ordnername darf nicht leer sein.');
+  const old = await one<{ name: string }>(`SELECT name FROM file_folders WHERE id = $1`, [id]);
+  if (!old) throw new CmsError('Ordner nicht gefunden.');
+  await query(`UPDATE file_folders SET name = $1 WHERE id = $2`, [newName, id]);
+  await query(`UPDATE files SET folder = $1 WHERE folder = $2`, [newName, old.name]);
+}
+
+/** Alle Dateien eines Ordners in einen anderen verschieben. */
+export async function moveAllFiles(fromId: string, toId: string): Promise<number> {
+  const from = await one<{ name: string }>(`SELECT name FROM file_folders WHERE id = $1`, [fromId]);
+  const to = await one<{ name: string }>(`SELECT name FROM file_folders WHERE id = $1`, [toId]);
+  if (!from || !to) throw new CmsError('Ordner nicht gefunden.');
+  const r = await query<{ n: number }>(`WITH u AS (UPDATE files SET folder = $1 WHERE folder = $2 RETURNING 1) SELECT count(*)::int AS n FROM u`, [to.name, from.name]);
+  return r[0]?.n ?? 0;
+}
+
+/** Leeren Ordner loeschen. Wirft, wenn noch Dateien drin sind. */
+export async function deleteFolder(id: string): Promise<void> {
+  const f = await one<{ name: string }>(`SELECT name FROM file_folders WHERE id = $1`, [id]);
+  if (!f) throw new CmsError('Ordner nicht gefunden.');
+  const n = await one<{ n: number }>(`SELECT count(*)::int AS n FROM files WHERE folder = $1`, [f.name]);
+  if (n && n.n > 0) throw new CmsError(`Der Ordner enthält noch ${n.n} Datei(en). Erst verschieben.`);
+  await query(`DELETE FROM file_folders WHERE id = $1`, [id]);
+}
+
+/** Ordner einer einzelnen Datei aendern. */
+export async function moveFile(fileId: string, folderName: string): Promise<void> {
+  await query(`UPDATE files SET folder = $1 WHERE id = $2`, [folderName || null, fileId]);
+}
 
 const MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',

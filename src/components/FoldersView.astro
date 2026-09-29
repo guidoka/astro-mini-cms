@@ -1,0 +1,70 @@
+---
+// Ordnerverwaltung: Anlegen, Umbenennen, alle Dateien verschieben, leere
+// Ordner loeschen. Daten und POST kommen aus pages.ts (foldersPage):
+//
+//   const p = await foldersPage(Astro);
+//   if (p.redirect) return Astro.redirect(p.redirect, 302);
+//   <Admin title="Ordner" ok={p.ok} error={p.error}><FoldersView {...p} /></Admin>
+import type { FoldersPageData } from '../pages';
+
+interface Props extends Omit<FoldersPageData, 'redirect' | 'ok' | 'error'> {}
+const { folders, filesBasePath } = Astro.props;
+---
+<div class="card cms-mb">
+  <form method="post" class="cms-row end">
+    <input type="hidden" name="_action" value="add" />
+    <div class="field" style="margin:0;flex:1">
+      <label for="new-folder">Neuer Ordner</label>
+      <input id="new-folder" name="name" type="text" required placeholder="Ordnername" />
+    </div>
+    <button class="btn">Anlegen</button>
+  </form>
+</div>
+
+{folders.length === 0
+  ? <p class="cms-small cms-muted">Keine Ordner vorhanden.</p>
+  : (
+<table class="list">
+  <thead><tr><th>Ordner</th><th style="width:5rem">Dateien</th><th>Verschieben nach</th><th></th></tr></thead>
+  <tbody>{folders.map((f) => (
+    <tr>
+      <td>
+        <form method="post" class="cms-inline" style="display:flex;gap:.5rem;align-items:center">
+          <input type="hidden" name="_action" value="rename" />
+          <input type="hidden" name="id" value={f.id} />
+          <input type="text" name="name" value={f.name} style="min-width:12rem" required />
+          <button class="btn secondary btn-sm">Umbenennen</button>
+        </form>
+      </td>
+      <td class="cms-small cms-muted">{f.n}</td>
+      <td>
+        {f.n > 0 ? (
+          <form method="post" class="cms-inline" style="display:flex;gap:.5rem;align-items:center">
+            <input type="hidden" name="_action" value="move_all" />
+            <input type="hidden" name="from" value={f.id} />
+            <select name="to" style="width:auto">
+              {folders.filter((o) => o.id !== f.id).map((o) => (
+                <option value={o.id}>{o.name}</option>
+              ))}
+            </select>
+            <button class="btn secondary btn-sm" data-confirm={`Alle ${f.n} Dateien aus „${f.name}" verschieben?`}>Verschieben</button>
+          </form>
+        ) : <span class="cms-small cms-muted">—</span>}
+      </td>
+      <td>
+        {f.n === 0 ? (
+          <form method="post" style="display:inline">
+            <input type="hidden" name="_action" value="delete" />
+            <input type="hidden" name="id" value={f.id} />
+            <button class="btn danger btn-sm" data-confirm={`Ordner „${f.name}" wirklich löschen?`}>Löschen</button>
+          </form>
+        ) : null}
+      </td>
+    </tr>
+  ))}</tbody>
+</table>
+)}
+
+<div class="cms-mt">
+  <a href={filesBasePath} class="btn secondary">← Zurück zu den Dateien</a>
+</div>

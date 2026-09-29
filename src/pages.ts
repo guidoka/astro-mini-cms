@@ -8,7 +8,7 @@ import type { APIContext, AstroCookies } from 'astro';
 import { query } from './db';
 import { cms, CmsError } from './config';
 import { flash, readableError, withFlash } from './admin';
-import { countFiles, deleteFile, fileFolders, fileUsage, listFiles, storeUpload, type FileRow, type FileUse } from './files';
+import { countFiles, createFolder, deleteFile, deleteFolder, fileFolders, fileUsage, listFiles, moveAllFiles, moveFile, renameFolder, storeUpload, type FileRow, type FileUse, type FolderRow } from './files';
 import { requestCode, sessionHours, setSessionCookie, userFromCookies, verifyCode, type CmsUser } from './auth';
 
 type Ctx = Pick<APIContext, 'request' | 'url' | 'cookies' | 'locals'>;
@@ -26,7 +26,7 @@ export interface FilesPageData {
   pages: number;
   total: number;
   files: FileRow[];
-  folders: { folder: string; n: number }[];
+  folders: FolderRow[];
   usageId: string | null;
   usage: FileUse[];
 }
@@ -44,9 +44,14 @@ export async function filesPage(Astro: Ctx, opts: { basePath?: string; pageSize?
         await deleteFile(String(form.get('id') ?? ''));
         return { redirect: withFlash(basePath, 'ok', 'Datei gelöscht.') } as FilesPageData;
       }
+      if (action === 'move') {
+        await moveFile(String(form.get('id') ?? ''), String(form.get('folder') ?? ''));
+        return { redirect: withFlash(basePath, 'ok', 'Datei verschoben.') } as FilesPageData;
+      }
       const file = form.get('file');
       if (!(file instanceof File) || file.size === 0) throw new CmsError('Bitte eine Datei wählen.');
-      await storeUpload(file, String(form.get('title') ?? '') || undefined);
+      const uploadFolder = String(form.get('folder') ?? '') || 'Upload';
+      await storeUpload(file, String(form.get('title') ?? '') || undefined, uploadFolder);
       return { redirect: withFlash(basePath, 'ok', 'Datei hochgeladen.') } as FilesPageData;
     } catch (e) {
       error = readableError(e);
@@ -71,6 +76,51 @@ export async function filesPage(Astro: Ctx, opts: { basePath?: string; pageSize?
     pages: Math.max(1, Math.ceil(total / pageSize)),
     total, files, folders, usageId, usage,
   };
+}
+
+// ---- Ordnerverwaltung ------------------------------------------------------
+
+export interface FoldersPageData {
+  redirect?: string;
+  ok?: string;
+  error?: string;
+  folders: FolderRow[];
+  filesBasePath: string;
+}
+
+export async function foldersPage(Astro: Ctx, opts: { basePath?: string; filesBasePath?: string } = {}): Promise<FoldersPageData> {
+  const basePath = opts.basePath ?? '/admin/dateien/ordner';
+  const filesBasePath = opts.filesBasePath ?? '/admin/dateien';
+  let error = '';
+
+  if (Astro.request.method === 'POST') {
+    const form = await Astro.request.formData();
+    const action = String(form.get('_action') ?? '');
+    try {
+      if (action === 'add') {
+        await createFolder(String(form.get('name') ?? ''));
+        return { redirect: withFlash(basePath, 'ok', 'Ordner angelegt.') } as FoldersPageData;
+      }
+      if (action === 'rename') {
+        await renameFolder(String(form.get('id') ?? ''), String(form.get('name') ?? ''));
+        return { redirect: withFlash(basePath, 'ok', 'Ordner umbenannt.') } as FoldersPageData;
+      }
+      if (action === 'move_all') {
+        const n = await moveAllFiles(String(form.get('from') ?? ''), String(form.get('to') ?? ''));
+        return { redirect: withFlash(basePath, 'ok', `${n} Datei(en) verschoben.`) } as FoldersPageData;
+      }
+      if (action === 'delete') {
+        await deleteFolder(String(form.get('id') ?? ''));
+        return { redirect: withFlash(basePath, 'ok', 'Ordner gelöscht.') } as FoldersPageData;
+      }
+    } catch (e) {
+      error = readableError(e);
+    }
+  }
+
+  const f = flash(Astro.url);
+  const folders = await fileFolders();
+  return { ok: f.ok, error: error || f.error, folders, filesBasePath };
 }
 
 // ---- Seitenbaum ------------------------------------------------------------

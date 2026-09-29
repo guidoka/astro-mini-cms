@@ -1,5 +1,6 @@
 ---
-// Dateiverwaltung: Hochladen, Suchen, Ordnerfilter, Verwendung, Löschen.
+// Dateiverwaltung: Hochladen, Suchen, Ordnerfilter, Verwendung, Löschen,
+// Ordner beim Upload wählen, Ordner pro Datei ändern.
 // Daten und POST-Verarbeitung kommen aus pages.ts (filesPage); die Seite
 // des Projekts legt die View in ihren Admin-Rahmen:
 //
@@ -13,8 +14,10 @@ import { cms } from '../config';
 interface Props extends Omit<FilesPageData, 'redirect' | 'ok' | 'error'> {
   /** Satz unter dem Upload-Formular. */
   hint?: string;
+  /** Link zur Ordnerverwaltung (optional). */
+  foldersHref?: string;
 }
-const { basePath, q, folder, page, pages, total, files, folders, usageId, usage, hint } = Astro.props;
+const { basePath, q, folder, page, pages, total, files, folders, usageId, usage, hint, foldersHref } = Astro.props;
 const mb = Math.round(cms().maxUploadBytes / 1024 / 1024);
 const link = (p: Record<string, string | number>) => {
   const u = new URLSearchParams({ q, ordner: folder, seite: String(page), ...Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)])) });
@@ -28,7 +31,15 @@ const link = (p: Record<string, string | number>) => {
       <label for="file">Neue Datei</label>
       <input id="file" name="file" type="file" accept={UPLOAD_ACCEPT} required />
     </div>
-    <div class="field" style="margin:0;min-width:16rem">
+    <div class="field" style="margin:0;min-width:10rem">
+      <label for="upload-folder">Ordner</label>
+      <select id="upload-folder" name="folder">
+        {folders.map((o) => (
+          <option value={o.name} selected={o.name === 'Upload'}>{o.name}</option>
+        ))}
+      </select>
+    </div>
+    <div class="field" style="margin:0;min-width:12rem">
       <label for="title">Bezeichnung</label>
       <input id="title" name="title" type="text" placeholder="optional" />
     </div>
@@ -41,11 +52,12 @@ const link = (p: Record<string, string | number>) => {
   <input type="text" name="q" value={q} placeholder="Suchen" style="flex:1;min-width:12rem" />
   <select name="ordner" style="width:auto">
     <option value="" selected={folder === ''}>alle Ordner</option>
-    {folders.filter((o) => o.folder).map((o) => (
-      <option value={o.folder} selected={folder === o.folder}>{o.folder} ({o.n})</option>
+    {folders.filter((o) => o.name).map((o) => (
+      <option value={o.name} selected={folder === o.name}>{o.name} ({o.n})</option>
     ))}
   </select>
   <button class="btn secondary">Anzeigen</button>
+  {foldersHref && <a href={foldersHref} class="btn secondary">Ordner organisieren</a>}
 </form>
 <p class="cms-small cms-muted" style="margin:0 0 .75rem">{total} Dateien, Seite {page} von {pages}</p>
 
@@ -72,14 +84,25 @@ const link = (p: Record<string, string | number>) => {
         <div>{file.title || file.filename}</div>
         <div class="cms-xs">{file.blob_key}</div>
       </td>
-      <td class="cms-small cms-muted">{file.folder ?? '—'}{file.width ? <span class="cms-xs" style="display:block">{file.width} × {file.height}</span> : null}</td>
+      <td class="cms-small">
+        <form method="post" class="cms-inline">
+          <input type="hidden" name="_action" value="move" />
+          <input type="hidden" name="id" value={file.id} />
+          <select name="folder" onchange="this.form.submit()">
+            {folders.map((o) => (
+              <option value={o.name} selected={file.folder === o.name}>{o.name}</option>
+            ))}
+          </select>
+        </form>
+        {file.width ? <span class="cms-xs" style="display:block">{file.width} × {file.height}</span> : null}
+      </td>
       <td class="cms-small cms-muted">{file.mime}</td>
       <td class="cms-small cms-nowrap">
         <a href={link({ verwendung: file.id })}>Verwendung</a>
         <form method="post" style="display:inline">
           <input type="hidden" name="_action" value="delete" />
           <input type="hidden" name="id" value={file.id} />
-          <button class="btn danger" style="margin-left:.5rem">Löschen</button>
+          <button class="btn danger" style="margin-left:.5rem" data-confirm="Diese Datei wirklich löschen?">Löschen</button>
         </form>
       </td>
     </tr>

@@ -132,7 +132,23 @@ import { filesPage } from 'astro-mini-cms/pages';
 const p = await filesPage(Astro);
 if (p.redirect) return Astro.redirect(p.redirect, 302);
 ---
-<Admin title="Dateien" ok={p.ok} error={p.error}><FilesView {...p} /></Admin>
+<Admin title="Dateien" ok={p.ok} error={p.error}>
+  <FilesView {...p} foldersHref="/admin/dateien/ordner" />
+</Admin>
+```
+
+Ordnerverwaltung (anlegen, umbenennen, Dateien verschieben, leere löschen):
+
+```astro
+---
+// src/pages/admin/dateien/ordner.astro
+import Admin from '../../../layouts/Admin.astro';
+import FoldersView from 'astro-mini-cms/components/FoldersView.astro';
+import { foldersPage } from 'astro-mini-cms/pages';
+const p = await foldersPage(Astro);
+if (p.redirect) return Astro.redirect(p.redirect, 302);
+---
+<Admin title="Ordner" ok={p.ok} error={p.error}><FoldersView {...p} /></Admin>
 ```
 
 ```ts
@@ -182,10 +198,10 @@ rootHere })`; das Projekt hängt seine Spalten an und ruft `saveRow('pages',
 | `astro-mini-cms/content` | `normalizePath`, `getNav`, `getPage`, `ancestors` |
 | `astro-mini-cms/middleware` | `cmsMiddleware` |
 | `astro-mini-cms/routes` | `filesListRoute`, `uploadRoute`, `logoutRoute` |
-| `astro-mini-cms/pages` | `loginPage`, `filesPage`, `pagesIndex` |
+| `astro-mini-cms/pages` | `loginPage`, `filesPage`, `foldersPage`, `pagesIndex` |
 | `astro-mini-cms/storage` | `fileSystemStorage`, `layeredStorage`, `Storage` |
 | `astro-mini-cms/storage/s3` | `s3Storage` (R2, S3, kompatible) |
-| `astro-mini-cms/components/*` | `AdminShell`, `LoginView`, `FilesView`, `PagesView`, `LayoutEditor`, `ImageField`, `Scripts`, `CodeFelder` |
+| `astro-mini-cms/components/*` | `AdminShell`, `LoginView`, `FilesView`, `FoldersView`, `PagesView`, `LayoutEditor`, `ImageField`, `Scripts`, `CodeFelder` |
 
 ## Was die Nutzertabelle braucht
 
