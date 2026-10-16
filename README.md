@@ -212,6 +212,11 @@ selbst; wer die Spalte hat, setzt den Trigger aus `sql/001_cms.sql`.
 
 ## Änderungen
 
+- **0.2.1** — Bildauswahl lädt beim Scrollen seitenweise nach (dazu ein Knopf
+  «Weitere … laden») statt bei 200 Dateien abzubrechen; `/admin/api/dateien`
+  nimmt `seite` (ab 1) und antwortet mit `page` und `limit`.
+- **0.2.0** — Ordnerverwaltung in der Dateiliste, Dialoge zentriert.
+- **0.1.2** — Seitenliste im Admin in Menüreihenfolge.
 - **0.1.1** — Eigene Blöcke mit dem Typ eines Kernblocks
   ersetzen diesen (`defineLayout({ blocks })`), TinyMCE-Einstellungen des
   Projekts über `window.miniCms.tinyOptions`, `handle`/`dropZone`/`moveTo`

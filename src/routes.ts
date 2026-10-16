@@ -11,15 +11,16 @@ import { logout } from './auth';
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 
-/** Dateiliste fuer die Bildauswahl: Suche und Ordnerfilter, hoechstens `limit` Treffer. */
+/** Dateiliste fuer die Bildauswahl: Suche und Ordnerfilter, `limit` Treffer je Seite (`seite`, ab 1). */
 export function filesListRoute(limit = 200): APIRoute {
   return async ({ url, locals }) => {
     if (!(locals as { user?: unknown }).user) return json({ files: [], folders: [], total: 0 }, 401);
     const q = url.searchParams.get('q') ?? '';
     const folder = url.searchParams.get('ordner') ?? '';
-    const [files, total, folders] = await Promise.all([listFiles(q, limit, 0, folder), countFiles(q, folder), fileFolders()]);
+    const page = Math.max(1, Number(url.searchParams.get('seite')) || 1);
+    const [files, total, folders] = await Promise.all([listFiles(q, limit, (page - 1) * limit, folder), countFiles(q, folder), fileFolders()]);
     return json({
-      total,
+      total, page, limit,
       folders: folders.map((f) => ({ name: f.folder, n: f.n })),
       files: files.map((f) => ({
         id: f.id, src: f.blob_key, filename: f.filename, mime: f.mime, title: f.title, folder: f.folder,

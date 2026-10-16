@@ -74,6 +74,11 @@
       picker.querySelector('[data-close]').onclick = function () { picker.style.display = 'none'; };
       picker.querySelector('[data-q]').oninput = debounce(function () { load(); }, 250);
       picker.querySelector('[data-folder]').onchange = function () { load(); };
+      // Nachladen beim Scrollen: kurz vor dem Ende der Liste die nächste Seite holen.
+      picker.querySelector('[data-grid]').onscroll = function (e) {
+        var g = e.target;
+        if (!picker.loading && picker.hasMore && g.scrollTop + g.clientHeight > g.scrollHeight - 300) load(true);
+      };
       picker.querySelector('[data-up]').onchange = function (e) {
         var fd = new FormData(); fd.append('file', e.target.files[0]);
         fetch('/admin/api/upload', { method: 'POST', body: fd }).then(function (r) { return r.json(); }).then(function (f) {
@@ -86,10 +91,14 @@
     picker.onPick = onPick;
     picker.style.display = '';
     load();
-    function load() {
+    // Die Liste kommt seitenweise (Server: `limit` je Seite). Suche oder Ordner
+    // beginnen bei Seite 1; Scrollen ans Ende oder «Weitere laden» hängt die nächste Seite an.
+    function load(more) {
       var q = picker.querySelector('[data-q]').value;
       var sel = picker.querySelector('[data-folder]');
-      fetch('/admin/api/dateien?q=' + encodeURIComponent(q) + '&ordner=' + encodeURIComponent(sel.value)).then(function (r) { return r.json(); }).then(function (data) {
+      picker.page = more ? (picker.page || 1) + 1 : 1;
+      picker.loading = true;
+      fetch('/admin/api/dateien?q=' + encodeURIComponent(q) + '&ordner=' + encodeURIComponent(sel.value) + '&seite=' + picker.page).then(function (r) { return r.json(); }).then(function (data) {
         var files = data.files || [];
         // Ordnerliste einmal füllen, die Auswahl bleibt beim Neuladen stehen.
         if (sel.options.length <= 1 && data.folders) {
@@ -99,13 +108,13 @@
             sel.appendChild(opt);
           });
         }
-        var grid = picker.querySelector('[data-grid]'); grid.innerHTML = '';
-        if (!files.length) {
+        var grid = picker.querySelector('[data-grid]');
+        if (!more) grid.innerHTML = '';
+        var foot = grid.querySelector('[data-more]'); if (foot) foot.remove();
+        if (!files.length && !more) {
+          picker.hasMore = false; picker.loading = false;
           grid.innerHTML = '<p style="grid-column:1/-1;color:#57534e;font-size:.85rem">Keine Dateien. Oben lässt sich eine hochladen.</p>';
           return;
-        }
-        if (data.total > files.length) {
-          grid.innerHTML = '<p style="grid-column:1/-1;color:#57534e;font-size:.85rem;margin:0">' + files.length + ' von ' + data.total + ' Dateien. Über Suche oder Ordner eingrenzen.</p>';
         }
         files.forEach(function (f) {
           var b = document.createElement('button'); b.type = 'button';
@@ -116,6 +125,16 @@
           b.onclick = function () { picker.onPick(f); picker.style.display = 'none'; };
           grid.appendChild(b);
         });
+        var shown = grid.querySelectorAll('button').length;
+        picker.hasMore = data.total > shown;
+        picker.loading = false;
+        if (picker.hasMore) {
+          var p = document.createElement('p'); p.setAttribute('data-more', '');
+          p.style.cssText = 'grid-column:1/-1;color:#57534e;font-size:.85rem;margin:.25rem 0 0;display:flex;gap:.75rem;align-items:center';
+          p.innerHTML = shown + ' von ' + data.total + ' Dateien. <button type="button" class="btn secondary" style="font-size:.8rem">Weitere ' + Math.min(data.limit || files.length, data.total - shown) + ' laden</button>';
+          p.querySelector('button').onclick = function () { load(true); };
+          grid.appendChild(p);
+        }
       });
     }
   }
