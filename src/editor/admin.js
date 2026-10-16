@@ -67,8 +67,12 @@
         '<div style="display:flex;gap:.5rem;padding:.75rem;border-bottom:1px solid #e7e5e4;align-items:center">' +
         '<input data-q placeholder="Suchen…" style="flex:1;padding:.4rem .6rem;border:1px solid #d6d3d1;border-radius:4px">' +
         '<select data-folder style="padding:.4rem .6rem;border:1px solid #d6d3d1;border-radius:4px"><option value="">alle Ordner</option></select>' +
-        '<label class="btn secondary" style="margin:0">Hochladen <input data-up type="file" accept="image/*,.pdf" style="display:none"></label>' +
-        '<button type="button" data-close class="btn secondary">Schliessen</button></div>' +
+        // Zwei Symbolknöpfe (User 16.10.2026): Pfeil in den Kasten = Hochladen, X = Schliessen; Text als Tooltip und für Vorleser.
+        '<label class="btn secondary" style="margin:0;display:inline-flex;align-items:center;padding:.4rem .55rem" title="Hochladen" aria-label="Hochladen">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/></svg>' +
+        '<input data-up type="file" accept="image/*,.pdf" style="display:none"></label>' +
+        '<button type="button" data-close class="btn secondary" style="display:inline-flex;align-items:center;padding:.4rem .55rem" title="Schliessen" aria-label="Schliessen">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
         '<div data-grid style="overflow:auto;padding:.75rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));grid-auto-rows:max-content;align-content:start;gap:.5rem"></div></div></div>';
       document.body.appendChild(picker);
       picker.querySelector('[data-close]').onclick = function () { picker.style.display = 'none'; };

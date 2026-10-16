@@ -212,6 +212,8 @@ selbst; wer die Spalte hat, setzt den Trigger aus `sql/001_cms.sql`.
 
 ## Änderungen
 
+- **0.2.2** — Bildauswahl: Hochladen und Schliessen als Symbolknöpfe (Pfeil in
+  den Kasten, X) mit Tooltip und aria-label.
 - **0.2.1** — Bildauswahl lädt beim Scrollen seitenweise nach (dazu ein Knopf
   «Weitere … laden») statt bei 200 Dateien abzubrechen; `/admin/api/dateien`
   nimmt `seite` (ab 1) und antwortet mit `page` und `limit`.
