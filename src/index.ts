@@ -10,4 +10,5 @@ export * from './content';
 export * from './middleware';
 export * from './routes';
 export * from './pages';
+export * from './stats';
 export { fileSystemStorage, layeredStorage, type Storage } from './storage/index';

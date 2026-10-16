@@ -10,6 +10,7 @@ import { cms, CmsError } from './config';
 import { flash, readableError, withFlash } from './admin';
 import { countFiles, createFolder, deleteFile, deleteFolder, fileFolders, fileUsage, listFiles, moveAllFiles, moveFile, renameFolder, storeUpload, type FileRow, type FileUse, type FolderRow } from './files';
 import { requestCode, sessionHours, setSessionCookie, userFromCookies, verifyCode, type CmsUser } from './auth';
+import { RESOLUTIONS, dayStart, firstDay, series, todayInZone, topPages, totals, type Bucket, type Resolution, type TopPage } from './stats';
 
 type Ctx = Pick<APIContext, 'request' | 'url' | 'cookies' | 'locals'>;
 
@@ -222,4 +223,61 @@ export async function loginPage(Astro: Ctx, opts: LoginOptions = {}): Promise<Lo
     }
   }
   return { step, email, remember, error, days, showRemember };
+}
+
+// ---- Statistik ---------------------------------------------------------------
+
+export interface StatsPageData {
+  basePath: string;
+  von: string;
+  bis: string;
+  res: Resolution;
+  resolutions: Record<Resolution, string>;
+  presets: { key: string; label: string; active: boolean }[];
+  today: string;
+  /** erster Tag mit Messwerten oder null */
+  start: string | null;
+  startLabel: string;
+  rows: Bucket[];
+  top: TopPage[];
+  sum: { views: number; visitors: number; pages: number };
+}
+
+/** Zeitraum von/bis (Tage in der Zone), Aufloesung Stunde bis Jahr, Schnellwahl;
+ *  Verlauf und Datumsfelder beginnen beim ersten Messwert, davor nichts. */
+export async function statsPage(Astro: Pick<Ctx, 'url'>, opts: { basePath?: string } = {}): Promise<StatsPageData> {
+  const basePath = opts.basePath ?? '/admin/statistik';
+  const q = Astro.url.searchParams;
+  const today = todayInZone();
+  const ago = (days: number) => todayInZone(new Date(Date.now() - days * 864e5));
+  // Schluessel ohne Ziffern, damit die Objektreihenfolge der Anzeige entspricht.
+  const presets: Record<string, { von: string; bis: string; res: Resolution; label: string }> = {
+    heute: { von: today, bis: today, res: 'hour', label: 'Heute' },
+    gestern: { von: ago(1), bis: ago(1), res: 'hour', label: 'Gestern' },
+    woche: { von: ago(6), bis: today, res: 'day', label: '7 Tage' },
+    monat: { von: ago(29), bis: today, res: 'day', label: '30 Tage' },
+    zwoelf: { von: ago(364), bis: today, res: 'month', label: '12 Monate' },
+    jahr: { von: `${today.slice(0, 4)}-01-01`, bis: today, res: 'month', label: 'Dieses Jahr' },
+    alles: { von: '2000-01-01', bis: today, res: 'year', label: 'Alles' },
+  };
+  const presetKey = q.get('zeitraum') && presets[q.get('zeitraum')!] ? q.get('zeitraum')! : 'monat';
+  const p = presets[presetKey]!;
+  const ymd = (s: string | null, fallback: string) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : fallback);
+  const start = await firstDay();
+  const vonRaw = ymd(q.get('von'), p.von);
+  const von = start && vonRaw < start ? start : vonRaw;
+  const bisRaw = ymd(q.get('bis'), p.bis);
+  const bis = bisRaw < von ? von : bisRaw;
+  const resParam = q.get('aufloesung') as Resolution | null;
+  const res: Resolution = resParam && resParam in RESOLUTIONS ? resParam : p.res;
+  const from = dayStart(von);
+  const to = dayStart(bis, 1);
+  const [rows, top, sum] = start
+    ? await Promise.all([series(from, to, res), topPages(from, to), totals(from, to)])
+    : [[], [], { views: 0, visitors: 0, pages: 0 }];
+  return {
+    basePath, von, bis, res, resolutions: RESOLUTIONS,
+    presets: Object.entries(presets).map(([key, v]) => ({ key, label: v.label, active: key === presetKey && !q.get('von') })),
+    today, start, startLabel: start ? start.split('-').reverse().join('.') : '', rows, top, sum,
+  };
 }

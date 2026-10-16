@@ -42,13 +42,29 @@ export interface CmsConfig {
   fileUsage?: (ctx: { id: string; byPath: string; byId: string }) => Promise<FileUse[]>;
   /** Groesste erlaubte Datei in Bytes. */
   maxUploadBytes: number;
+  /** Seitenzaehler (stats.ts, statsMiddleware, statsPage). */
+  stats: StatsConfig;
 }
 
-export type CmsOptions = Partial<Omit<CmsConfig, 'tables' | 'sessionHours'>> & {
+export interface StatsConfig {
+  /** Zeitzone fuer Tage und Stunden der Auswertung. */
+  timeZone: string;
+  /** Stufe 2 (Besucher je Tag per Tageskennzeichen) an oder aus; das Projekt liest das z. B. aus seinen Einstellungen. Wird hoechstens einmal je Minute gefragt. */
+  countVisitors: () => boolean | Promise<boolean>;
+  /** Namen zu Pfaden fuer die Liste der meistgesehenen Seiten (Pfad → Name). */
+  pageNames?: (paths: string[]) => Promise<Record<string, string>>;
+  /** Kennungen, die nicht zaehlen (Bots, Werkzeuge). */
+  botPattern: RegExp;
+  /** Pfade, die nie zaehlen (Pflegeoberflaeche, API). */
+  excludePrefixes: string[];
+}
+
+export type CmsOptions = Partial<Omit<CmsConfig, 'tables' | 'sessionHours' | 'stats'>> & {
   storage: Storage;
   sendCode: CmsConfig['sendCode'];
   tables?: Partial<CmsConfig['tables']>;
   sessionHours?: Partial<CmsConfig['sessionHours']>;
+  stats?: Partial<StatsConfig>;
 };
 
 const store = globalThis as { __astroMiniCms?: CmsConfig };
@@ -76,6 +92,14 @@ export function configureCms(opts: CmsOptions): CmsConfig {
     pageKinds: opts.pageKinds ?? { standard: 'Normale Seite', home: 'Startseite' },
     fileUsage: opts.fileUsage,
     maxUploadBytes: opts.maxUploadBytes ?? 20 * 1024 * 1024,
+    stats: {
+      timeZone: 'Europe/Zurich',
+      countVisitors: () => true,
+      // Bewusst grob: lieber ein paar Leser zu wenig als Crawler in der Statistik.
+      botPattern: /bot|crawl|spider|slurp|curl|wget|python|java\/|go-http|headless|lighthouse|pagespeed|monitor|uptime|preview|facebookexternalhit|whatsapp|telegram|discord|skype|slack|pingdom|scan/i,
+      excludePrefixes: ['/admin', '/api', '/_'],
+      ...opts.stats,
+    },
   };
   store.__astroMiniCms = config;
   return config;

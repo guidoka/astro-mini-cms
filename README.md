@@ -184,6 +184,33 @@ Die Standardfelder einer Seite liest `pageFieldsFromForm(form, { isNew,
 rootHere })`; das Projekt hängt seine Spalten an und ruft `saveRow('pages',
 …)` und `recomputePaths()`.
 
+## Seitenzähler
+
+Aufrufe je Stunde und Pfad ohne Cookies, IP oder User-Agent; Besucher je Tag
+über ein Tageskennzeichen (Hash aus Tag, Tagessalz, IP, Browser), das am
+nächsten Tag samt Salz gelöscht wird. Gezählt werden nur Browser-Navigationen
+(Sec-Fetch-Mode navigate, Sec-Fetch-Dest document, Accept-Language), keine
+Bots, keine Link-Vorschauen, keine angemeldete Redaktion.
+
+```ts
+// Konfiguration (alles optional)
+configureCms({ …, stats: {
+  timeZone: 'Europe/Zurich',
+  countVisitors: async () => (await one(`SELECT stats_visitors FROM site_settings`))?.stats_visitors ?? true,
+  pageNames: async (paths) => Object.fromEntries((await query(`SELECT path, name FROM pages WHERE path = ANY($1)`, [paths])).map((r) => [r.path, r.name])),
+} });
+// Middleware: nach cmsMiddleware, damit locals.user gesetzt ist
+export const onRequest = sequence(cmsMiddleware(), statsMiddleware());
+// Aufräumjob des Projekts, täglich
+await cleanupStats();
+// Seite /admin/statistik
+const p = await statsPage(Astro);
+<Admin title="Statistik"><StatsView {...p} /></Admin>
+```
+
+Schema: `sql/003_stats.sql` (page_views, site_visitors, site_days, site_salts).
+Stunden bleiben 90 Tage, danach fasst `cleanupStats()` sie zu Tagen zusammen.
+
 ## Module
 
 | Import | Inhalt |
@@ -212,6 +239,10 @@ selbst; wer die Spalte hat, setzt den Trigger aus `sql/001_cms.sql`.
 
 ## Änderungen
 
+- **0.3.0** — Seitenzähler ohne Cookies (`stats.ts`, `statsMiddleware`,
+  `statsPage` + `StatsView`, `cleanupStats`, `sql/003_stats.sql`), aus
+  nutri-form herausgelöst; Konfiguration `stats` (Zeitzone, Besucher-Schalter,
+  Namensauflösung, Bot-Muster, ausgenommene Pfade).
 - **0.2.2** — Bildauswahl: Hochladen und Schliessen als Symbolknöpfe (Pfeil in
   den Kasten, X) mit Tooltip und aria-label.
 - **0.2.1** — Bildauswahl lädt beim Scrollen seitenweise nach (dazu ein Knopf

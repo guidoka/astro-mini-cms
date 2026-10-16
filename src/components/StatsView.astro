@@ -1,0 +1,71 @@
+---
+// Statistik: Aufrufe und Besucher aus dem Zaehler (stats.ts). Daten liefert
+// statsPage() in pages.ts; das Projekt setzt die View in seinen Rahmen:
+//   const p = await statsPage(Astro);
+//   <Admin title="Statistik"><StatsView {...p} /></Admin>
+import type { StatsPageData } from '../pages';
+type Props = StatsPageData;
+const { basePath, von, bis, res, resolutions, presets, today, start, startLabel, rows, top, sum } = Astro.props;
+const max = Math.max(1, ...rows.map((r) => r.views));
+const fmt = (n: number) => n.toLocaleString('de-CH');
+---
+<div class="card cms-mb hint">
+  Zählt jede ausgelieferte Seite, ohne Cookies und ohne gespeicherte IP-Adresse. Bots, Link-Vorschauen
+  und die Redaktion im eingeloggten Zustand zählen nicht mit. Besucher werden je Tag über ein
+  Tageskennzeichen unterschieden, das am nächsten Tag gelöscht wird. Stunden sind 90 Tage lang
+  verfügbar, ältere Zahlen nur noch je Tag.
+</div>
+
+<form method="get" action={basePath} class="cms-row" style="flex-wrap:wrap;align-items:flex-end;gap:.5rem">
+  <label class="field" style="margin:0">Von <input type="date" name="von" value={von} min={start ?? undefined} max={today} /></label>
+  <label class="field" style="margin:0">Bis <input type="date" name="bis" value={bis} min={start ?? undefined} max={today} /></label>
+  <label class="field" style="margin:0">Auflösung
+    <select name="aufloesung" style="width:auto">
+      {Object.entries(resolutions).map(([k, l]) => <option value={k} selected={res === k}>{l}</option>)}
+    </select>
+  </label>
+  <button class="btn secondary">Anzeigen</button>
+</form>
+<p class="cms-small cms-mb" style="margin-top:.5rem">
+  {presets.map((p) => <a href={`${basePath}?zeitraum=${p.key}`} style={p.active ? 'font-weight:600;margin-right:.75rem' : 'margin-right:.75rem'}>{p.label}</a>)}
+</p>
+
+<div class="cms-row cms-mb" style="flex-wrap:wrap;gap:1rem">
+  <div class="card" style="min-width:10rem"><div class="cms-small cms-muted">Aufrufe</div><div style="font-size:1.6rem;font-weight:600">{fmt(sum.views)}</div></div>
+  <div class="card" style="min-width:10rem"><div class="cms-small cms-muted">Besucher</div><div style="font-size:1.6rem;font-weight:600">{fmt(sum.visitors)}</div></div>
+  <div class="card" style="min-width:10rem"><div class="cms-small cms-muted">Seiten mit Aufrufen</div><div style="font-size:1.6rem;font-weight:600">{fmt(sum.pages)}</div></div>
+</div>
+
+{!start && <p class="cms-small cms-muted cms-mb">Noch keine Aufrufe gezählt. Die ersten Zahlen erscheinen mit dem ersten Besuch.</p>}
+{start && <p class="cms-small cms-muted cms-mb">Zahlen gibt es seit dem {startLabel}; frühere Tage werden nicht angezeigt.</p>}
+
+<h2 style="font-size:1.1rem;font-weight:600;margin:0 0 .5rem">Verlauf je {resolutions[res]}</h2>
+<table class="list cms-mb">
+  <thead><tr><th style="width:11rem">{resolutions[res]}</th><th>Aufrufe</th><th style="width:7rem;text-align:right">Zahl</th><th style="width:7rem;text-align:right">Besucher</th></tr></thead>
+  <tbody>
+    {rows.map((r) => (
+      <tr>
+        <td class="cms-small cms-nowrap">{r.label}</td>
+        <td><div style={`height:.9rem;background:var(--accent,#333);border-radius:2px;width:${Math.round((r.views / max) * 100)}%;min-width:${r.views ? 2 : 0}px`}></div></td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums">{fmt(r.views)}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums">{r.visitors === null ? '–' : fmt(r.visitors)}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+{res === 'hour' && <p class="cms-small cms-muted cms-mb">Besucher gibt es nur je Tag, nicht je Stunde.</p>}
+
+<h2 style="font-size:1.1rem;font-weight:600;margin:1rem 0 .5rem">Meistgesehene Seiten</h2>
+<table class="list">
+  <thead><tr><th>Seite</th><th>Adresse</th><th style="width:7rem;text-align:right">Aufrufe</th></tr></thead>
+  <tbody>
+    {top.map((t) => (
+      <tr>
+        <td>{t.name ?? <span class="cms-muted">(ohne Namen)</span>}</td>
+        <td class="cms-small"><a href={t.path} target="_blank">{t.path}</a></td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums">{fmt(t.views)}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+{top.length === 0 && <p class="cms-small cms-muted" style="margin-top:.75rem">Noch keine Aufrufe im Zeitraum.</p>}

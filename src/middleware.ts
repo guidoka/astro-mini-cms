@@ -11,6 +11,8 @@
 // Einbau: export const onRequest = sequence(eigenes, cmsMiddleware({ … }))
 import type { MiddlewareHandler } from 'astro';
 import { bearerToken, userFromRequest, type CmsUser } from './auth';
+import { normalizePath } from './content';
+import { recordView, shouldCount } from './stats';
 
 export interface CmsMiddlewareOptions {
   /** Pfad der Pflegeoberflaeche. */
@@ -62,5 +64,25 @@ export function cmsMiddleware(opts: CmsMiddlewareOptions = {}): MiddlewareHandle
       }
     }
     return next();
+  };
+}
+
+// ---- Seitenzaehler -----------------------------------------------------------
+// Zaehlt nach der Antwort, ohne sie zu verzoegern. Die IP kommt hinter einem
+// Ingress aus x-forwarded-for; sie wird nur gehasht, nie gespeichert (stats.ts).
+// Einbau: sequence(cmsMiddleware(), statsMiddleware())  — nach cmsMiddleware,
+// damit locals.user gesetzt ist und die Redaktion nicht mitzaehlt.
+export function statsMiddleware(): MiddlewareHandler {
+  return async (ctx, next) => {
+    const res = await next();
+    try {
+      const path = normalizePath(ctx.url.pathname);
+      if (shouldCount(ctx.request.method, path, res.status, res.headers.get('content-type'), ctx.request.headers, Boolean((ctx.locals as { user?: unknown }).user))) {
+        let ip = ctx.request.headers.get('x-forwarded-for')?.split(',')[0]!.trim() ?? '';
+        if (!ip) { try { ip = ctx.clientAddress; } catch { ip = ''; } }
+        recordView(path, ip, ctx.request.headers.get('user-agent') ?? '').catch((e) => console.error('[stats]', e));
+      }
+    } catch (e) { console.error('[stats]', e); }
+    return res;
   };
 }
