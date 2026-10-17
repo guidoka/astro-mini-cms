@@ -120,7 +120,7 @@ import { loginPage } from 'astro-mini-cms/pages';
 const p = await loginPage(Astro, { allow: (u) => u?.role === 'admin' });
 if (p.redirect) return Astro.redirect(p.redirect, 302);
 ---
-<LoginView {...p} subtitle="Adminoberfläche" />
+<LoginView {...p} />
 ```
 
 ```astro
@@ -239,8 +239,11 @@ selbst; wer die Spalte hat, setzt den Trigger aus `sql/001_cms.sql`.
 
 ## Änderungen
 
-- **0.3.1** — `subtitle` an LoginView (zweite Zeile im Titel, Vorgabe
-  „Pflegeoberfläche“ wie bisher), passend zu `subtitle` an AdminShell.
+- **0.3.2** — Vorgabe des Untertitels in AdminShell und LoginView ist
+  „Adminoberfläche“; beide Projekte nennen es so, `brand` bleibt der reine
+  Name.
+- **0.3.1** — `subtitle` an LoginView (zweite Zeile im Titel), passend zu
+  `subtitle` an AdminShell.
 - **0.3.0** — Seitenzähler ohne Cookies (`stats.ts`, `statsMiddleware`,
   `statsPage` + `StatsView`, `cleanupStats`, `sql/003_stats.sql`), aus
   nutri-form herausgelöst; Konfiguration `stats` (Zeitzone, Besucher-Schalter,
