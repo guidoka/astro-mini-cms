@@ -11,6 +11,8 @@ import type { LoginPageData } from '../pages';
 
 interface Props extends Omit<LoginPageData, 'redirect'> {
   brand?: string;
+  /** Zweite Zeile im Titel, etwa „Adminoberfläche“. */
+  subtitle?: string;
   accent?: string;
   /** Adresse dieser Seite, für „Andere Adresse“. */
   self?: string;
@@ -19,6 +21,7 @@ interface Props extends Omit<LoginPageData, 'redirect'> {
 const {
   step, email, remember, error, days, showRemember,
   brand = cms().brand,
+  subtitle = 'Pflegeoberfläche',
   accent = '#b91c1c',
   self = '/admin/login',
   lang = 'de',
@@ -46,7 +49,7 @@ const {
 </head>
 <body>
   <form method="post" class="box">
-    <h1>{brand} Pflegeoberfläche</h1>
+    <h1>{brand} {subtitle}</h1>
     {error && <div class="err">{error}</div>}
     {step === 'email' ? (
       <>
